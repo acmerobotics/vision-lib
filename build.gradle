@@ -1,0 +1,32 @@
+apply plugin: 'java'
+apply plugin: 'eclipse'
+
+repositories {
+	jcenter()
+	flatDir {
+		dirs 'lib'
+	}
+}
+
+targetCompatibility = '1.7'
+sourceCompatibility = '1.7'
+
+eclipse {
+	classpath { 
+		file {
+			whenMerged {
+				for (entry in getEntries()) {
+					if (entry.getPath().contains("opencv")) {
+						entry.setNativeLibraryLocation("visionTest/lib/x64")
+					}
+				}
+			}
+		}
+	}
+}
+
+dependencies {
+	compile (name: 'opencv-310', ext: 'jar')
+
+	testCompile 'junit:junit:4.12'
+}
