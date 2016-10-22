@@ -17,6 +17,8 @@ import com.acmerobotics.library.vision.Beacon.BeaconColor;
 
 public class BeaconAnalyzer {
 	
+	public static int imageIndex = 0;
+	
 	public enum ButtonDetectionMethod {
 		BUTTON_HOUGH,
 		BUTTON_ELLIPSE
@@ -68,7 +70,6 @@ public class BeaconAnalyzer {
 	
 	public static List<BeaconRegion> findBeaconRegions(Mat image, ColorDetector detector, BeaconColor color, ButtonDetectionMethod method) {
 		detector.analyzeImage(image);
-//		Main.writeImage(detector.getMask());
 		List<ColorRegion> regions = detector.getRegions();
 		
 		Mat gray = new Mat();
@@ -123,12 +124,13 @@ public class BeaconAnalyzer {
 		List<Circle> circles = new ArrayList<Circle>();
 		
 		Mat edges = new Mat();
+		int nonZero = Core.countNonZero(gray);
 		// don't morphologically open unless there are enough white pixels
-		if (Core.countNonZero(gray) > 150) {
+		if (nonZero > 250) {
 			Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(7, 7));
 			Imgproc.morphologyEx(gray, gray, Imgproc.MORPH_OPEN, kernel);
-			Imgproc.GaussianBlur(gray, gray, new Size(5, 5), 2);
 		}
+		Imgproc.GaussianBlur(gray, gray, new Size(5, 5), 2);
 		
 		Imgproc.Canny(gray, edges, 200, 100);
 
