@@ -26,7 +26,7 @@ eclipse {
 }
 
 dependencies {
-	compile (name: 'opencv-310', ext: 'jar')
+	compileOnly (name: 'opencv-310', ext: 'jar')
 
 	testCompile 'junit:junit:4.12'
 }

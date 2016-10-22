@@ -7,3 +7,6 @@ bin/
 # Gradle 
 build/
 .gradle/
+
+# Android
+*.iml
