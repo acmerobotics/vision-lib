@@ -1,7 +1,6 @@
 package com.acmerobotics.library.vision;
 
-import java.util.ArrayList;
-import java.util.List;
+import com.acmerobotics.library.vision.Beacon.BeaconColor;
 
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
@@ -13,11 +12,13 @@ import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
-import com.acmerobotics.library.vision.Beacon.BeaconColor;
+import java.util.ArrayList;
+import java.util.List;
 
 public class BeaconAnalyzer {
-	
-	public static int imageIndex = 0;
+
+	private static ColorDetector redDetector, blueDetector;
+	private static List<BeaconRegion> redRegions, blueRegions, allRegions;
 	
 	public enum ButtonDetectionMethod {
 		BUTTON_HOUGH,
@@ -29,23 +30,32 @@ public class BeaconAnalyzer {
 	}
 	
 	public static List<Beacon> analyzeImage(Mat image, ButtonDetectionMethod buttonMethod) {
-		ScalarRange red = new ScalarRange();
-		red.add(new Scalar(155, 0, 160), new Scalar(180, 255, 255));
-		red.add(new Scalar(0, 0, 160), new Scalar(2, 255, 255));
+		if (redDetector == null || blueDetector == null) {
+			ScalarRange red = new ScalarRange();
+			red.add(new Scalar(155, 0, 160), new Scalar(180, 255, 255));
+			red.add(new Scalar(0, 0, 160), new Scalar(2, 255, 255));
+
+			ScalarRange blue = new ScalarRange();
+			blue.add(new Scalar(90, 40, 180), new Scalar(125, 255, 255));
+
+			redDetector = new ColorDetector(red);
+			blueDetector = new ColorDetector(blue);
+		}
 		
-		ScalarRange blue = new ScalarRange();
-		blue.add(new Scalar(90, 40, 180), new Scalar(125, 255, 255));
+		if (redRegions == null || blueRegions == null) {
+			redRegions = new ArrayList<BeaconRegion>();
+			blueRegions = new ArrayList<BeaconRegion>();
+		}
 		
-		ColorDetector redDetector = new ColorDetector(red);
-		ColorDetector blueDetector = new ColorDetector(blue);
+		findBeaconRegions(image, redDetector, BeaconColor.RED, buttonMethod, redRegions);
+		findBeaconRegions(image, blueDetector, BeaconColor.BLUE, buttonMethod, blueRegions);
+
+		if (allRegions == null) {
+			allRegions = new ArrayList<BeaconRegion>();
+		} else {
+			allRegions.clear();
+		}
 		
-		List<BeaconRegion> redRegions = findBeaconRegions(image, redDetector, BeaconColor.RED, buttonMethod);
-		List<BeaconRegion> blueRegions = findBeaconRegions(image, blueDetector, BeaconColor.BLUE, buttonMethod);
-		
-		BeaconRegion.drawRegions(image, redRegions);
-		BeaconRegion.drawRegions(image, blueRegions);
-		
-		List<BeaconRegion> allRegions = new ArrayList<BeaconRegion>();
 		allRegions.addAll(redRegions);
 		allRegions.addAll(blueRegions);
 		
@@ -61,14 +71,14 @@ public class BeaconAnalyzer {
 				} else {
 					newBeacon = new Beacon(region1, region2);
 				}
-				if (newBeacon.score() >= 6) beacons.add(newBeacon);
+				if (newBeacon.getScore().getNumericScore() >= 6) beacons.add(newBeacon);
 			}
 		}
 		
 		return beacons;
 	}
 	
-	public static List<BeaconRegion> findBeaconRegions(Mat image, ColorDetector detector, BeaconColor color, ButtonDetectionMethod method) {
+	public static void findBeaconRegions(Mat image, ColorDetector detector, BeaconColor color, ButtonDetectionMethod method, List<BeaconRegion> beaconRegions) {
 		detector.analyzeImage(image);
 		List<ColorRegion> regions = detector.getRegions();
 		
@@ -81,8 +91,9 @@ public class BeaconAnalyzer {
 		Core.bitwise_and(gray, bg, gray);
 		
 		List<Circle> buttons = findButtons(gray, method);
-		
-		List<BeaconRegion> beaconRegions = new ArrayList<BeaconRegion>();
+
+		beaconRegions.clear();
+
 		for (ColorRegion region : regions) {
 			BeaconRegion beaconRegion = new BeaconRegion(region, color);
 			for (Circle button : buttons) {
@@ -90,7 +101,6 @@ public class BeaconAnalyzer {
 			}
 			beaconRegions.add(beaconRegion);
 		}
-		return beaconRegions;
 	}
 	
 	public static List<Circle> findButtons(Mat gray, ButtonDetectionMethod method) {

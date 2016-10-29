@@ -1,8 +1,5 @@
 package com.acmerobotics.library.vision;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint2f;
@@ -12,12 +9,84 @@ import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Beacon {
 	
 	public enum BeaconColor {
 		RED,
 		BLUE, 
 		UNKNOWN
+	}
+
+	public class Score {
+		public final double ratioError;
+		public final double areaError;
+		public final int leftButtons;
+		public final int rightButtons;
+		
+		private String scoreString;
+		private int score;
+
+		public Score(double ratioError, double areaError, int leftButtons, int rightButtons) {
+			this.ratioError = ratioError;
+			this.areaError = areaError;
+			this.leftButtons = leftButtons;
+			this.rightButtons = rightButtons;
+			
+			calculateScore();
+		}
+		
+		private void calculateScore() {
+			score = 0;
+			scoreString = "";
+			
+			if (ratioError < 0.05) {
+				score += 2;
+				scoreString += "A";
+			}
+			
+			if (areaError < 0.05) {
+				score += 1;
+				scoreString += "D";
+			}
+			
+			if (rightButtons == -1) {
+				if (leftButtons == 2) {
+					score += 4;
+					scoreString += "2";
+				} else if (leftButtons > 0) {
+					score += 1;
+					scoreString += "?";
+				}
+			} else {
+				if (leftButtons == 1) {
+					score += 2;
+					scoreString += "L";
+				} else if (leftButtons > 1) {
+					score += 1;
+					scoreString += "L?";
+				}
+					
+				if (rightButtons == 1) {
+					score += 2;
+					scoreString += "R";
+				} else if (rightButtons > 1) {
+					score += 1;
+					scoreString += "R?";
+				}
+			}
+		}
+
+		public int getNumericScore() {
+			return score;
+		}
+
+		@Override
+		public String toString() {
+			return scoreString;
+		}
 	}
 	
 	public static final double BEACON_HEIGHT = 5.7;
@@ -28,13 +97,14 @@ public class Beacon {
 	
 	private List<BeaconRegion> beaconRegions;
 	private RotatedRect bounds;
-	
-	private String scoreString;
+	private Score score;
 	
 	public Beacon(BeaconRegion center) {
 		beaconRegions = new ArrayList<BeaconRegion>();
 		beaconRegions.add(center);
 		bounds = center.getBounds();
+		
+		calculateScore();
 	}
 	
 	public Beacon(BeaconRegion region1, BeaconRegion region2) {
@@ -48,6 +118,8 @@ public class Beacon {
 			beaconRegions.add(region1);
 			calculateBoundsTwoRegions(region2, region1);
 		}
+		
+		calculateScore();
 	}
 	
 	private void calculateBoundsTwoRegions(BeaconRegion leftRegion, BeaconRegion rightRegion) {
@@ -61,61 +133,28 @@ public class Beacon {
 		bounds = Imgproc.minAreaRect(points);
 	}
 	
-	public String getScoreString() {
-		return this.scoreString;
-	}
-	
-	public int score() {
-		int score = 0;
-		
-		scoreString = "";
-		
+	public void calculateScore() {
 		double aspectRatioError = getAspectRatioError();
-		if (aspectRatioError < 0.05) {
-			score += 2;
-			scoreString += "A";
-		}
-		
-		if (beaconRegions.size() == 1) {
-			int numButtons = beaconRegions.get(0).getButtons().size();
-			if (numButtons == 2) {
-				score += 4;
-				scoreString += "2";
-			} else if (numButtons > 0) {
-				score += 1;
-				scoreString += "?";
-			}
-		} else {
-			int leftButtons = getLeftRegion().getButtons().size();
-			if (leftButtons == 1) {
-				score += 2;
-				scoreString += "L";
-			} else if (leftButtons > 1) {
-				score += 1;
-				scoreString += "L?";
-			}
-			
-			int rightButtons = getRightRegion().getButtons().size();			
-			if (rightButtons == 1) {
-				score += 2;
-				scoreString += "R";
-			} else if (rightButtons > 1) {
-				score += 1;
-				scoreString += "R?";
-			}
-		}
-		
+
 		double totalArea = bounds.size.width * bounds.size.height;
 		double leftArea = getLeftRegion().area();
 		double rightArea = getRightRegion().area();
-		double diffAreaError = Math.pow(leftArea - rightArea, 2) / totalArea;
+
+		double diffAreaError = Math.pow((leftArea - rightArea) / totalArea, 2);
 		
-		if (diffAreaError < 350) {
-			score += 1;
-			scoreString += "D";
+		int leftButtons, rightButtons;
+		if (beaconRegions.size() == 1) {
+			leftButtons = beaconRegions.get(0).getButtons().size();
+			rightButtons = -1;
+		} else {
+			leftButtons = getLeftRegion().getButtons().size();
+			rightButtons = getRightRegion().getButtons().size();			
 		}
 		
-		
+		this.score = new Score(aspectRatioError, diffAreaError, leftButtons, rightButtons);
+	}
+	
+	public Score getScore() {
 		return score;
 	}
 	

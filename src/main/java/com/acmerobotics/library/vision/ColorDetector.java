@@ -1,26 +1,28 @@
 package com.acmerobotics.library.vision;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
-import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class ColorDetector {
 	
 	public ScalarRange range;
 	
 	private List<ColorRegion> regions;
-	private Mat mask;
+	private Mat mask, hsv, gray, temp;
 	
 	public ColorDetector(ScalarRange range) {
 		this.range = range;
 		this.regions = null;
 		this.mask = new Mat();
+		this.hsv = new Mat();
+		this.gray = new Mat();
+		this.temp = new Mat();
 	}
 	
 	public ScalarRange getColorRange() {
@@ -32,8 +34,6 @@ public class ColorDetector {
 	}
 	
 	public void analyzeImage(Mat image) {
-		Mat hsv = new Mat(), gray = new Mat();
-		
 		Imgproc.cvtColor(image, hsv, Imgproc.COLOR_BGR2HSV);
 		Imgproc.cvtColor(image, gray, Imgproc.COLOR_BGR2GRAY);
 		
@@ -41,20 +41,12 @@ public class ColorDetector {
 		
 		Imgproc.medianBlur(mask, mask, 5);
 		
-//		Main.writeImage(mask);
-		
 		Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(7, 7));
 		Imgproc.morphologyEx(mask, mask, Imgproc.MORPH_OPEN, kernel);
-//		Imgproc.erode(mask, mask, kernel);
-//		Main.writeImage(mask);
+
 		Mat kernel2 = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(25, 25));
 		Imgproc.morphologyEx(mask, mask, Imgproc.MORPH_CLOSE, kernel2);
-//		Main.writeImage(mask);
-//		Imgproc.dilate(mask, mask, kernel);
-		
-//		Core.bitwise_and(gray, mask, gray);
-		
-		Mat temp = new Mat();
+
 		mask.copyTo(temp);
 		List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
 		Imgproc.findContours(temp, contours, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
