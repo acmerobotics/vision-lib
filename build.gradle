@@ -17,7 +17,7 @@ eclipse {
 			whenMerged {
 				for (entry in getEntries()) {
 					if (entry.getPath().contains("opencv")) {
-						entry.setNativeLibraryLocation("visionTest/lib/x64")
+						entry.setNativeLibraryLocation("${project.name}/lib/x64")
 					}
 				}
 			}
