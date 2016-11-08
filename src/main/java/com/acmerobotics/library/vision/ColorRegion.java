@@ -1,12 +1,12 @@
 package com.acmerobotics.library.vision;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class ColorRegion {
 	
@@ -29,6 +29,12 @@ public class ColorRegion {
 	public static void drawRegions(Mat image, List<ColorRegion> regions, Scalar color, int thickness) {
 		for (ColorRegion region : regions) {
 			region.draw(image, color, thickness);
+		}
+	}
+
+	public void release() {
+		if (contour != null) {
+			contour.release();
 		}
 	}
 

@@ -1,16 +1,15 @@
 package com.acmerobotics.library.vision;
 
-import java.util.ArrayList;
-import java.util.List;
+import com.acmerobotics.library.vision.Beacon.BeaconColor;
 
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
-import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.RotatedRect;
 import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
 
-import com.acmerobotics.library.vision.Beacon.BeaconColor;
+import java.util.ArrayList;
+import java.util.List;
 
 public class BeaconRegion {
 	
@@ -23,17 +22,11 @@ public class BeaconRegion {
 		this.region = colorRegion;
 		this.color = color;
 		this.buttons = new ArrayList<Circle>();
-		calculateBounds();
+        this.bounds = Util.fitRotatedRect(this.region.getContour());
 	}
 	
 	public double area() {
 		return Imgproc.contourArea(region.getContour());
-	}
-	
-	private void calculateBounds() {
-		MatOfPoint2f points = new MatOfPoint2f();
-		points.fromArray(region.getContour().toArray());
-		bounds = Imgproc.minAreaRect(points);
 	}
 	
 	public void addButton(Circle button) {
@@ -69,6 +62,10 @@ public class BeaconRegion {
 		for (BeaconRegion region : regions) {
 			region.draw(image);
 		}
+	}
+
+	public void release() {
+		region.release();
 	}
 
 }

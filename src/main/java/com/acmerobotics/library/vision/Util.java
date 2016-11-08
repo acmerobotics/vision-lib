@@ -3,6 +3,8 @@ package com.acmerobotics.library.vision;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfPoint;
+import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.RotatedRect;
@@ -41,6 +43,26 @@ public class Util {
 		for (int i = 0; i < 4; i++) {
 			Imgproc.line(image, vertices[i], vertices[(i + 1) % 4], color, thickness);
 		}
+	}
+
+	public static RotatedRect combineRotatedRects(RotatedRect...rects) {
+		MatOfPoint2f points = new MatOfPoint2f();
+		Point[] arr = new Point[4 * rects.length];
+		Point[] temp = new Point[4];
+		for (int i = 0; i < rects.length; i++) {
+			rects[i].points(temp);
+			System.arraycopy(temp, 0, arr, 4 * i, 4);
+		}
+		points.fromArray(arr);
+		return Imgproc.minAreaRect(points);
+	}
+
+	public static RotatedRect fitRotatedRect(MatOfPoint points) {
+		MatOfPoint2f pointsf = new MatOfPoint2f();
+		points.convertTo(pointsf, CvType.CV_32FC2);
+		RotatedRect bounds = Imgproc.minAreaRect(pointsf);
+		pointsf.release();
+		return bounds;
 	}
 
 }

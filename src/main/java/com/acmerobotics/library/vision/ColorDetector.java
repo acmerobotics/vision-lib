@@ -10,12 +10,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ColorDetector {
-	
+
 	public ScalarRange range;
-	
+
 	private List<ColorRegion> regions;
 	private Mat mask, hsv, gray, temp;
-	
+
 	public ColorDetector(ScalarRange range) {
 		this.range = range;
 		this.regions = null;
@@ -24,51 +24,75 @@ public class ColorDetector {
 		this.gray = new Mat();
 		this.temp = new Mat();
 	}
-	
+
 	public ScalarRange getColorRange() {
 		return range;
 	}
-	
+
 	public void setColorRange(ScalarRange range) {
 		this.range = range;
 	}
-	
+
 	public void analyzeImage(Mat image) {
 		Imgproc.cvtColor(image, hsv, Imgproc.COLOR_BGR2HSV);
 		Imgproc.cvtColor(image, gray, Imgproc.COLOR_BGR2GRAY);
-		
+
 		this.mask = range.inRange(hsv);
-		
-		Imgproc.medianBlur(mask, mask, 5);
-		
-		Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(7, 7));
+
+		Size originalSize = new Size(mask.cols(), mask.rows());
+		Imgproc.resize(mask, mask, new Size(originalSize.width / 4, originalSize.height / 4));
+
+		Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(3, 3));
 		Imgproc.morphologyEx(mask, mask, Imgproc.MORPH_OPEN, kernel);
 
-		Mat kernel2 = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(25, 25));
+		Mat kernel2 = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(7, 7));
 		Imgproc.morphologyEx(mask, mask, Imgproc.MORPH_CLOSE, kernel2);
+
+		Imgproc.resize(mask, mask, originalSize);
 
 		mask.copyTo(temp);
 		List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
 		Imgproc.findContours(temp, contours, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
-		
+
 		regions = new ArrayList<ColorRegion>();
 		for (MatOfPoint contour : contours) {
 			regions.add(new ColorRegion(contour));
 		}
-		
+
 	}
-	
+
 	public List<ColorRegion> getRegions() {
 		return regions;
 	}
-	
+
 	public void clipRegion(Mat src, Mat dest) {
 		Mat tempMask = Util.expandChannels(this.mask, dest.channels());
 		Core.bitwise_and(src, tempMask, dest);
 	}
-	
+
 	public Mat getMask() {
 		return this.mask;
+	}
+
+	public void release() {
+		if (mask != null) {
+			mask.release();
+		}
+		if (hsv != null) {
+			hsv.release();
+		}
+		if (gray != null) {
+			gray.release();
+		}
+		if (temp != null) {
+			temp.release();
+		}
+		if (regions != null) {
+			for (ColorRegion region : regions) {
+				region.release();
+			}
+			regions = null;
+		}
 	}
 
 }

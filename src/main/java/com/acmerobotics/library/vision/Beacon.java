@@ -112,12 +112,11 @@ public class Beacon {
 		if (region1.getBounds().center.x < region2.getBounds().center.x) {
 			beaconRegions.add(region1);
 			beaconRegions.add(region2);
-			calculateBoundsTwoRegions(region1, region2);
 		} else {
 			beaconRegions.add(region2);
 			beaconRegions.add(region1);
-			calculateBoundsTwoRegions(region2, region1);
 		}
+        this.bounds = Util.combineRotatedRects(region1.getBounds(), region2.getBounds());
 		
 		calculateScore();
 	}
@@ -134,7 +133,9 @@ public class Beacon {
 	}
 	
 	public void calculateScore() {
-		double aspectRatioError = getAspectRatioError();
+        double partialError = getAspectRatioError(bounds.size, PARTIAL_BEACON_WH_RATIO);
+        double fullError = getAspectRatioError(bounds.size, FULL_BEACON_WH_RATIO);
+        double aspectRatioError = Math.min(partialError, fullError);
 
 		double totalArea = bounds.size.width * bounds.size.height;
 		double leftArea = getLeftRegion().area();
@@ -156,12 +157,6 @@ public class Beacon {
 	
 	public Score getScore() {
 		return score;
-	}
-	
-	public double getAspectRatioError() {
-		double partialError = getAspectRatioError(bounds.size, PARTIAL_BEACON_WH_RATIO);
-		double fullError = getAspectRatioError(bounds.size, FULL_BEACON_WH_RATIO);
-		return Math.min(partialError, fullError);
 	}
 	
 	private double getAspectRatioError(Size size, double ratio) {
@@ -203,5 +198,19 @@ public class Beacon {
 		
 		Util.drawRotatedRect(image, bounds, new Scalar(255, 255, 0), 2);
 	}
+
+    public void release() {
+        if (beaconRegions != null) {
+            for (BeaconRegion region : beaconRegions) {
+                region.release();
+            }
+            beaconRegions = null;
+        }
+    }
+
+    @Override
+    public void finalize() {
+        release();
+    }
 	
 }
