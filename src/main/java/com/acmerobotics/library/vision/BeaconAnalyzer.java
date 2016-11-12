@@ -7,6 +7,7 @@ import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.MatOfPoint2f;
+import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.RotatedRect;
 import org.opencv.core.Scalar;
@@ -14,12 +15,28 @@ import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class BeaconAnalyzer {
 
+	public static class AnalysisIntermediates extends HashMap<String, Mat> {
+		@Override
+		public Mat put(String s, Mat mat) {
+			if (!super.containsKey(s)) {
+				super.put(s, new Mat());
+			}
+			mat.copyTo(super.get(s));
+			return null;
+		}
+	}
+
 	private static ColorDetector redDetector, blueDetector;
 	private static List<BeaconRegion> redRegions, blueRegions, allRegions;
+	static AnalysisIntermediates intermediates;
+    static BeaconColor currentColor;
+    public static boolean DEBUG = false;
 
 	public enum ButtonDetectionMethod {
 		BUTTON_HOUGH,
@@ -31,10 +48,14 @@ public class BeaconAnalyzer {
 	}
 
 	public static void analyzeImage(Mat image, ButtonDetectionMethod buttonMethod, List<Beacon> beacons) {
+		if (intermediates == null) {
+			intermediates = new AnalysisIntermediates();
+		}
+
 		if (redDetector == null || blueDetector == null) {
 			ScalarRange red = new ScalarRange();
 			red.add(new Scalar(155, 0, 160), new Scalar(180, 255, 255));
-			red.add(new Scalar(0, 0, 160), new Scalar(2, 255, 255));
+			red.add(new Scalar(0, 0, 160), new Scalar(10, 255, 255));
 
 			ScalarRange blue = new ScalarRange();
 			blue.add(new Scalar(90, 40, 180), new Scalar(125, 255, 255));
@@ -77,8 +98,18 @@ public class BeaconAnalyzer {
 	}
 
 	public static void findBeaconRegions(Mat image, ColorDetector detector, BeaconColor color, ButtonDetectionMethod method, List<BeaconRegion> beaconRegions) {
+        currentColor = color;
+
 		detector.analyzeImage(image);
 		List<ColorRegion> regions = detector.getRegions();
+
+		if (DEBUG) {
+			Mat temp = new Mat();
+			image.copyTo(temp);
+			ColorRegion.drawRegions(temp, regions, color == BeaconColor.RED ? new Scalar(0, 0, 255) : new Scalar(255, 0, 0), 2);
+			intermediates.put("beacon_regions_" + color, temp);
+			temp.release();
+		}
 
 		Mat gray = new Mat();
 		Imgproc.cvtColor(image, gray, Imgproc.COLOR_BGR2GRAY);
@@ -87,6 +118,8 @@ public class BeaconAnalyzer {
 		Imgproc.threshold(gray, gray, 0, 255, Imgproc.THRESH_BINARY_INV | Imgproc.THRESH_OTSU);
 		Mat bg = detector.getMask();
 		Core.bitwise_and(gray, bg, gray);
+
+		if (DEBUG) intermediates.put("thresholded_regions_" + color, gray);
 
 		List<Circle> buttons = findButtons(gray, method);
 
@@ -134,19 +167,28 @@ public class BeaconAnalyzer {
 		Mat edges = new Mat();
 		int nonZero = Core.countNonZero(gray);
 
-//		Mat temp = new Mat();
-//		gray.copyTo(temp);
-//		Imgproc.putText(temp, Integer.toString(nonZero), new Point(0, 30), Core.FONT_HERSHEY_SIMPLEX, 1, new Scalar(255), 2);
-		// don't morphologically open unless there are enough white pixels
+		if (DEBUG) {
+			Mat temp = new Mat();
+			gray.copyTo(temp);
+			Imgproc.putText(temp, Integer.toString(nonZero), new Point(0, 30), Core.FONT_HERSHEY_SIMPLEX, 1, new Scalar(255), 2);
+			intermediates.put("buttons_" + currentColor, temp);
+			temp.release();
+		}
+//		 don't morphologically open unless there are enough white pixels
 		Mat kernel;
 		if (nonZero > 1700) {
 			kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(7, 7));
-		} else {
+		} else if (nonZero > 500) {
+			kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5, 5));
+		}else {
 			kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(3, 3));
 		}
 		Imgproc.morphologyEx(gray, gray, Imgproc.MORPH_OPEN, kernel);
+		if (DEBUG) intermediates.put("button_smooth_" + currentColor, gray);
 		Imgproc.GaussianBlur(gray, gray, new Size(5, 5), 2);
 		Imgproc.Canny(gray, edges, 200, 100);
+
+		if (DEBUG) intermediates.put("button_edges_" + currentColor, edges);
 
 		List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
 		Imgproc.findContours(edges, contours, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
@@ -179,6 +221,10 @@ public class BeaconAnalyzer {
         ellipseContour.release();
 
 		return circles;
+	}
+
+	public static Map<String, Mat> getIntermediates() {
+		return intermediates;
 	}
 
 }
