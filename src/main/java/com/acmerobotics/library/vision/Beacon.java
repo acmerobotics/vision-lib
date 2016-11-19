@@ -15,9 +15,17 @@ import java.util.List;
 public class Beacon {
 	
 	public enum BeaconColor {
-		RED,
-		BLUE, 
-		UNKNOWN
+		RED("R"),
+		BLUE("B"),
+		UNKNOWN("?");
+		private String colorString;
+		BeaconColor(String colorString) {
+			this.colorString = colorString;
+		}
+		@Override
+		public String toString() {
+			return this.colorString;
+		}
 	}
 
 	public class Score {
@@ -207,6 +215,11 @@ public class Beacon {
             beaconRegions = null;
         }
     }
+
+	@Override
+	public String toString() {
+		return getLeftRegion().getColor() + "/" + getRightRegion().getColor();
+	}
 
     @Override
     public void finalize() {

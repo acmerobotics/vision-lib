@@ -48,13 +48,14 @@ public class BeaconAnalyzer {
 	}
 
 	public static void analyzeImage(Mat image, ButtonDetectionMethod buttonMethod, List<Beacon> beacons) {
+
 		if (intermediates == null) {
 			intermediates = new AnalysisIntermediates();
 		}
 
 		if (redDetector == null || blueDetector == null) {
 			ScalarRange red = new ScalarRange();
-			red.add(new Scalar(155, 0, 160), new Scalar(180, 255, 255));
+			red.add(new Scalar(145, 0, 160), new Scalar(180, 255, 255));
 			red.add(new Scalar(0, 0, 160), new Scalar(10, 255, 255));
 
 			ScalarRange blue = new ScalarRange();
@@ -68,6 +69,8 @@ public class BeaconAnalyzer {
 			redRegions = new ArrayList<BeaconRegion>();
 			blueRegions = new ArrayList<BeaconRegion>();
 		}
+
+		Imgproc.resize(image, image, getSmallSize(image.size(), 640));
 
 		findBeaconRegions(image, redDetector, BeaconColor.RED, buttonMethod, redRegions);
 		findBeaconRegions(image, blueDetector, BeaconColor.BLUE, buttonMethod, blueRegions);
@@ -92,8 +95,16 @@ public class BeaconAnalyzer {
 				} else {
 					newBeacon = new Beacon(region1, region2);
 				}
-				if (newBeacon.getScore().getNumericScore() >= 6) beacons.add(newBeacon);
+				if (newBeacon.getScore().getNumericScore() >= 5) beacons.add(newBeacon);
 			}
+		}
+	}
+
+	public static Size getSmallSize(Size big, int maxDimension) {
+		if (big.width > big.height) {
+			return new Size(maxDimension, big.height * maxDimension / big.width);
+		} else {
+			return new Size(big.width * maxDimension / big.height, maxDimension);
 		}
 	}
 
